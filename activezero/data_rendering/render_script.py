@@ -60,7 +60,7 @@ if __name__ == "__main__":
     logger.info(f"Args: {args}")
 
     if args.primitives or args.primitives_v2:
-        total_scene = 1
+        total_scene = 10
         scene_names = np.arange(total_scene)
         sub_total_scene = len(scene_names) // args.total
         sub_scene_list = (
@@ -69,7 +69,7 @@ if __name__ == "__main__":
             else scene_names[(args.sub - 1) * sub_total_scene :]
         )
     else:
-        total_scene = 1
+        total_scene = 10
         scene_names = np.arange(total_scene)
         sub_total_scene = len(scene_names) // args.total
         sub_scene_list = []

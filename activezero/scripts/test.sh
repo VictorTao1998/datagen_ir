@@ -1,0 +1,1 @@
+python activezero2/test.py --cfg configs/example.yml

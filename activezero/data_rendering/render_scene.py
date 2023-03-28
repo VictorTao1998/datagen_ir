@@ -202,7 +202,7 @@ def render_scene(
             alight.set_color([0.0, 0.0, 0.0])
 
     mount_T = t3d.quaternions.quat2mat((-0.5, 0.5, 0.5, 0.5))
-    fov = np.random.uniform(1.3, 2.0)
+    fov = 1.7#np.random.uniform(1.3, 2.0)
     tex = cv2.imread(os.path.join(materials_root, "d415-pattern-sq.png"))
 
     def rotate_image(image, angle):
@@ -644,16 +644,21 @@ def render_gt_depth_label(
         
         #cam_extrinsic_l = np.eye(4)
         cam_extrinsic_l = meta_info["extrinsic_l"]
-        #cam_extrinsic_l = cv2ex2pose(cam_extrinsic_l).to_transformation_matrix()
+        #t2cv = np.array(
+        #    [[0.0, -1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [-1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0]], dtype=np.float32
+        #)
+        cam_extrinsic_l = cv2ex2pose(cam_extrinsic_l).to_transformation_matrix()
+        #print(cam_extrinsic_l)
+
         #cam_extrinsic_l = np.linalg.inv(cam_extrinsic_l)
         normal_map = cam_irl.get_float_texture("Normal")[...,:3]
         hn, wn = normal_map.shape[0], normal_map.shape[1]
 
         normal_map_flat = normal_map.reshape(hn*wn,3)
-        normal_map_world =  (cam_extrinsic_l[:3,:3] @ normal_map_flat.T).T
+        normal_map_world =  (cam_extrinsic_l[:3,:3] @ normal_map_flat.T)
 
-        #cv2_transform = pose2cv2ex(np.eye(4))
-        #normal_map_world = normal_map_world @ cv2_transform[:3,:3].T + cv2_transform[:3,3]
+        cv2_transform = pose2cv2ex(np.eye(4))
+        normal_map_world = (cv2_transform[:3,:3] @ normal_map_world).T
 
         normal_map_world = normal_map_world.reshape([hn,wn,3])
         normal_map_world = normal_map_world/np.linalg.norm(normal_map_world, axis=-1, keepdims=True)

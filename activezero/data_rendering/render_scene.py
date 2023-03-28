@@ -22,6 +22,8 @@ def render_scene(
     fixed_angle,
     primitives,
     primitives_v2,
+    primitive_sphere,
+    table,
     rand_lighting,
     rand_table,
     rand_env,
@@ -48,13 +50,13 @@ def render_scene(
     table_pose_np = np.loadtxt(os.path.join(repo_root, "data_rendering/materials/optical_table/pose.txt"))
     table_pose = sapien.Pose(table_pose_np[:3], table_pose_np[3:])
 
-    #print(table_pose.to_transformation_matrix())
+    #print(table_pose, table_pose.to_transformation_matrix())
     #assert 1==0
-
-    if rand_table:
-        load_rand_table(scene, os.path.join(repo_root, "data_rendering/materials/optical_table"), renderer, table_pose)
-    else:
-        load_table(scene, os.path.join(repo_root, "data_rendering/materials/optical_table"), renderer, table_pose)
+    if table:
+        if rand_table:
+            load_rand_table(scene, os.path.join(repo_root, "data_rendering/materials/optical_table"), renderer, table_pose)
+        else:
+            load_table(scene, os.path.join(repo_root, "data_rendering/materials/optical_table"), renderer, table_pose)
 
     # Add camera
     cam_intrinsic_base = np.loadtxt(os.path.join(materials_root, "cam_intrinsic_base.txt"))
@@ -199,7 +201,7 @@ def render_scene(
             plight5.set_color([0.1 * p_scale, 0.03 * p_scale, 0.03 * p_scale])
             alight.set_color([0.0, 0.0, 0.0])
 
-    mount_T = t3d.quaternions.quat2mat((-0.5, 0.5, 0.5, -0.5))
+    mount_T = t3d.quaternions.quat2mat((-0.5, 0.5, 0.5, 0.5))
     fov = np.random.uniform(1.3, 2.0)
     tex = cv2.imread(os.path.join(materials_root, "d415-pattern-sq.png"))
 
@@ -232,7 +234,7 @@ def render_scene(
             tex_path=os.path.join(materials_root, "d415-pattern-sq.png"),
         )
 
-    cam_extrinsic_list = np.load(os.path.join(materials_root, "cam_db_nerf.npy"))
+    cam_extrinsic_list = np.load(os.path.join(materials_root, "cam_db_nerf_near.npy"))
     if fixed_angle:
         assert num_views <= cam_extrinsic_list.shape[0]
     else:
@@ -263,11 +265,22 @@ def render_scene(
         for i in range(num_asset):
             info = load_random_primitives_v2(scene, renderer=renderer, idx=i)
             primitive_info.update(info)
+    elif primitive_sphere:
+        primitive_info = {}
+        r_list = [0.2,0.1]
+        table_pose_m = table_pose.to_transformation_matrix()
+        table_pose_m[:3,3] = table_pose_m[:3,3] + [0.2,0.,0.]
+        table_pose2 = sapien.Pose.from_transformation_matrix(table_pose_m)
+        p_list = [table_pose, table_pose2]
+        for i in range(1):
+            info = load_sphere(scene, renderer=renderer, idx=0, pose=p_list[i], radius=r_list[i])
+            primitive_info.update(info)
     else:
         if not os.path.exists(os.path.join(SCENE_DIR, f"{scene_id}/input.json")):
             logger.warning(f"{SCENE_DIR}/{scene_id}/input.json not exists.")
             return
         world_js = json.load(open(os.path.join(SCENE_DIR, f"{scene_id}/input.json"), "r"))
+        #world_js = json.load(open(os.path.join(SCENE_DIR, f"obj/input.json"), "r"))
         assets = world_js.keys()
         poses_world = [None for _ in range(NUM_OBJECTS)]
         extents = [None for _ in range(NUM_OBJECTS)]
@@ -325,7 +338,8 @@ def render_scene(
 
             apos = cam_mount.get_pose().to_transformation_matrix()[:3, :3] @ mount_T
             apos = t3d.quaternions.mat2quat(apos)
-            alight.set_pose(Pose(cam_mount.get_pose().p, apos))
+            #alight.set_pose(Pose(cam_mount.get_pose().p, apos))
+            alight.set_pose(Pose(cam_mount.get_pose().p, cam_mount.get_pose().q))
 
         else:
             # Obtain random camera extrinsic
@@ -432,7 +446,7 @@ def render_scene(
             "intrinsic_l": cam_ir_intrinsic,
             "intrinsic_r": cam_ir_intrinsic,
         }
-        if primitives or primitives_v2:
+        if primitives or primitives_v2 or primitive_sphere:
             scene_info["primitives"] = primitive_info
         else:
             scene_info.update(obj_info)
@@ -458,6 +472,8 @@ def render_gt_depth_label(
     fixed_angle,
     primitives,
     primitives_v2,
+    primitive_sphere,
+    table
 ):
     materials_root = os.path.join(repo_root, "data_rendering/materials")
 
@@ -520,7 +536,8 @@ def render_gt_depth_label(
     table_pose_np = np.loadtxt(os.path.join(repo_root, "data_rendering/materials/optical_table/pose.txt"))
     table_pose = sapien.Pose(table_pose_np[:3], table_pose_np[3:])
 
-    load_table_vk(scene, os.path.join(repo_root, "data_rendering/materials/optical_table"), table_pose)
+    if table:
+        load_table_vk(scene, os.path.join(repo_root, "data_rendering/materials/optical_table"), table_pose)
     # Add lights
     scene.set_ambient_light([0.5, 0.5, 0.5])
 
@@ -543,12 +560,22 @@ def render_gt_depth_label(
         for i in range(num_asset):
             primitive = primitives_info[f"obj_{i}"]
             load_random_primitives_from_info(scene, renderer=renderer, idx=i, primitive_info=primitive)
+    elif primitive_sphere:
+        # Load primitives from saved meta.pkl
+        main_meta_path = os.path.join(target_root, f"{scene_id}-0", "meta.pkl")
+        main_meta_info = load_pickle(main_meta_path)
+        primitives_info = main_meta_info["primitives"]
+        num_asset = len(primitives_info.keys())
+        for i in range(num_asset):
+            primitive = primitives_info[f"obj_{i}"]
+            load_random_primitives_from_info(scene, renderer=renderer, idx=i, primitive_info=primitive)
 
     else:
         if not os.path.exists(os.path.join(SCENE_DIR, f"{scene_id}/input.json")):
             logger.warning(f"{SCENE_DIR}/{scene_id}/input.json not exists.")
             return
-        world_js = json.load(open(os.path.join(SCENE_DIR, f"{scene_id}/input.json"), "r"))
+        #world_js = json.load(open(os.path.join(SCENE_DIR, f"{scene_id}/input.json"), "r"))
+        world_js = json.load(open(os.path.join(SCENE_DIR, f"obj/input.json"), "r"))
         assets = world_js.keys()
         actors = []
         for obj_name in assets:
@@ -614,6 +641,32 @@ def render_gt_depth_label(
         vis_depth = visualize_depth(depth)
         cv2.imwrite(os.path.join(folder_path, f"depthL_colored.png"), vis_depth)
 
+        
+        #cam_extrinsic_l = np.eye(4)
+        cam_extrinsic_l = meta_info["extrinsic_l"]
+        cam_extrinsic_l = cv2ex2pose(cam_extrinsic_l).to_transformation_matrix()
+        #cam_extrinsic_l = np.linalg.inv(cam_extrinsic_l)
+        normal_map = cam_irl.get_float_texture("Normal")[...,:3]
+        hn, wn = normal_map.shape[0], normal_map.shape[1]
+
+        normal_map_flat = normal_map.reshape(hn*wn,3)
+        normal_map_world =  (cam_extrinsic_l[:3,:3] @ normal_map_flat.T + cam_extrinsic_l[:3,3][...,None]).T
+
+        #cv2_transform = pose2cv2ex(np.eye(4))
+        #normal_map_world = normal_map_world @ cv2_transform[:3,:3].T + cv2_transform[:3,3]
+
+        normal_map_world = normal_map_world.reshape([hn,wn,3])
+        normal_map_world = normal_map_world/np.linalg.norm(normal_map_world, axis=-1, keepdims=True)
+        #print(np.linalg.norm(normal_map_world[900:902,500:502,:],axis=-1))
+        #assert 1==0
+        normal_map_colored = ((normal_map_world + 1) * 127.5).astype(np.uint8)
+        cv2.imwrite(os.path.join(folder_path, f"normalL_colored.png"), normal_map_colored)
+        normal_map_value = ((normal_map_world + 1) * 1000).astype(np.uint16)
+        cv2.imwrite(os.path.join(folder_path, f"normalL.png"), normal_map_value)
+
+        #print(print(np.linalg.norm(normal[900:902,500:502,:], axis=-1)))
+        #assert 1==0
+
         # scene.update_render()
         cam_irr.take_picture()
         pos = cam_irr.get_float_texture("Position")
@@ -623,7 +676,7 @@ def render_gt_depth_label(
         vis_depth = visualize_depth(depth)
         cv2.imwrite(os.path.join(folder_path, f"depthR_colored.png"), vis_depth)
 
-        if not (primitives or primitives_v2):
+        if not (primitives or primitives_v2 or primitive_sphere):
             # render label image
             obj_segmentation = cam_rgb.get_uint32_texture("Segmentation")[..., 1]
 

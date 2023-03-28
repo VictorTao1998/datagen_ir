@@ -444,6 +444,51 @@ def load_random_primitives_from_info(scene, renderer, idx, primitive_info):
         s = builder.build_kinematic(name=str(idx))
         s.set_pose(pose)
 
+def load_sphere(scene, renderer, idx, pose, radius):
+    type = "sphere"
+    builder = scene.create_actor_builder()
+
+    # Randomize material
+    material = renderer.create_material()
+    material.base_color = [0.96, 0.95, 0.25, 1.0]
+    material.metallic = 1.0#random.uniform(METALLIC_MIN, METALLIC_MAX)
+    material.roughness = 0.02#random.uniform(ROUGHNESS_MIN, ROUGHNESS_MAX)
+    material.specular = 0.7#random.uniform(SPECULAR_MIN, SPECULAR_MAX)
+    material.ior = 1.999#1 + random.random()
+    #prob = random.random()
+    #if prob < 0.1:
+    #    material.transmission = TRANSMISSION_MAX
+        # material.set_transmission_texture_from_file(get_random_texture())
+    #elif 0.1 <= prob < 0.6:
+    #    material.set_diffuse_texture_from_file(get_random_texture())
+
+    # Build
+
+    r = radius# + np.random.rand() * 0.05
+    l = 0
+    builder.add_sphere_visual(radius=r, material=material)
+    builder.add_sphere_collision(radius=r)
+    s = builder.build_kinematic(name=str(idx))
+    s.set_pose(pose)
+
+
+    primitive_info = {
+        f"obj_{idx}": {
+            "idx": idx,
+            "type": type,
+            "material": {
+                "base_color": material.base_color,
+                "metallic": material.metallic,
+                "roughness": material.roughness,
+                "specular": material.specular,
+                "ior": material.ior,
+            },
+            "size": {"r": r, "l": l},
+            "pose": s.get_pose().to_transformation_matrix(),
+        }
+    }
+
+    return primitive_info
 
 def load_random_primitives(scene, renderer, idx):
     type = random.choice(["sphere", "capsule", "box"])

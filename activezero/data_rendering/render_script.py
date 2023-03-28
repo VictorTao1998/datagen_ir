@@ -27,12 +27,14 @@ if __name__ == "__main__":
     parser.add_argument("--rand-lighting", action="store_true")
     parser.add_argument("--primitives", action="store_true", help="use primitives")
     parser.add_argument("--primitives-v2", action="store_true", help="use primitives v2")
+    parser.add_argument("--primitive_sphere", action="store_true", help="use primitive sphere")
+    parser.add_argument("--table", action="store_true", help="use table")
     parser.add_argument("--rand-table", action="store_true", help="use random material for table")
     parser.add_argument("--rand-env", action="store_true", help="use random environment map")
     args = parser.parse_args()
 
     spp = 128
-    num_view = 120
+    num_view = 5
 
     repo_root = REPO_ROOT
     target_root = args.target_root
@@ -59,8 +61,8 @@ if __name__ == "__main__":
     logger.add(sys.stdout, format=fmt)
     logger.info(f"Args: {args}")
 
-    if args.primitives or args.primitives_v2:
-        total_scene = 10
+    if args.primitives or args.primitives_v2 or args.primitive_sphere:
+        total_scene = 1
         scene_names = np.arange(total_scene)
         sub_total_scene = len(scene_names) // args.total
         sub_scene_list = (
@@ -69,7 +71,7 @@ if __name__ == "__main__":
             else scene_names[(args.sub - 1) * sub_total_scene :]
         )
     else:
-        total_scene = 10
+        total_scene = 1
         scene_names = np.arange(total_scene)
         sub_total_scene = len(scene_names) // args.total
         sub_scene_list = []
@@ -148,6 +150,8 @@ if __name__ == "__main__":
             fixed_angle=args.fixed_angle,
             primitives=args.primitives,
             primitives_v2=args.primitives_v2,
+            primitive_sphere=args.primitive_sphere,
+            table=args.table,
             rand_lighting=args.rand_lighting,
             rand_table=args.rand_table,
             rand_env=args.rand_env,
@@ -180,5 +184,7 @@ if __name__ == "__main__":
             fixed_angle=args.fixed_angle,
             primitives=args.primitives,
             primitives_v2=args.primitives_v2,
+            primitive_sphere=args.primitive_sphere,
+            table=args.table
         )
     exit(0)

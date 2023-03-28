@@ -575,7 +575,7 @@ def render_gt_depth_label(
             logger.warning(f"{SCENE_DIR}/{scene_id}/input.json not exists.")
             return
         #world_js = json.load(open(os.path.join(SCENE_DIR, f"{scene_id}/input.json"), "r"))
-        world_js = json.load(open(os.path.join(SCENE_DIR, f"obj/input.json"), "r"))
+        world_js = json.load(open(os.path.join(SCENE_DIR, f"{scene_id}/input.json"), "r"))
         assets = world_js.keys()
         actors = []
         for obj_name in assets:
@@ -644,13 +644,13 @@ def render_gt_depth_label(
         
         #cam_extrinsic_l = np.eye(4)
         cam_extrinsic_l = meta_info["extrinsic_l"]
-        cam_extrinsic_l = cv2ex2pose(cam_extrinsic_l).to_transformation_matrix()
+        #cam_extrinsic_l = cv2ex2pose(cam_extrinsic_l).to_transformation_matrix()
         #cam_extrinsic_l = np.linalg.inv(cam_extrinsic_l)
         normal_map = cam_irl.get_float_texture("Normal")[...,:3]
         hn, wn = normal_map.shape[0], normal_map.shape[1]
 
         normal_map_flat = normal_map.reshape(hn*wn,3)
-        normal_map_world =  (cam_extrinsic_l[:3,:3] @ normal_map_flat.T + cam_extrinsic_l[:3,3][...,None]).T
+        normal_map_world =  (cam_extrinsic_l[:3,:3] @ normal_map_flat.T).T
 
         #cv2_transform = pose2cv2ex(np.eye(4))
         #normal_map_world = normal_map_world @ cv2_transform[:3,:3].T + cv2_transform[:3,3]

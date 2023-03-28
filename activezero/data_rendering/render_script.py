@@ -31,10 +31,11 @@ if __name__ == "__main__":
     parser.add_argument("--table", action="store_true", help="use table")
     parser.add_argument("--rand-table", action="store_true", help="use random material for table")
     parser.add_argument("--rand-env", action="store_true", help="use random environment map")
+    parser.add_argument("--num_view", type=int, required=True)
     args = parser.parse_args()
 
     spp = 128
-    num_view = 5
+    num_view = args.num_view
 
     repo_root = REPO_ROOT
     target_root = args.target_root

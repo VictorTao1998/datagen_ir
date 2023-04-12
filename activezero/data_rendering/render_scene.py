@@ -234,7 +234,7 @@ def render_scene(
             tex_path=os.path.join(materials_root, "d415-pattern-sq.png"),
         )
 
-    cam_extrinsic_list = np.load(os.path.join(materials_root, "cam_db_nerf_near.npy"))
+    cam_extrinsic_list = np.load(os.path.join(materials_root, "cam_db_nerf_near_obj.npy"))
     if fixed_angle:
         assert num_views <= cam_extrinsic_list.shape[0]
     else:
@@ -242,7 +242,7 @@ def render_scene(
         obj_center = np.array([0.425, 0, 0])
         alpha_range = [0, 2 * np.pi]
         theta_range = [0.01, np.pi * 3 / 8]
-        radius_range = [0.8, 1.2]
+        radius_range = [0.2, 0.4]
         angle_list = [
             (alpha, theta, radius)
             for alpha in np.linspace(alpha_range[0], alpha_range[1], 50)
@@ -276,11 +276,12 @@ def render_scene(
             info = load_sphere(scene, renderer=renderer, idx=0, pose=p_list[i], radius=r_list[i])
             primitive_info.update(info)
     else:
+
         if not os.path.exists(os.path.join(SCENE_DIR, f"{scene_id}/input.json")):
             logger.warning(f"{SCENE_DIR}/{scene_id}/input.json not exists.")
             return
-        world_js = json.load(open(os.path.join(SCENE_DIR, f"{scene_id}/input.json"), "r"))
-        #world_js = json.load(open(os.path.join(SCENE_DIR, f"obj/input.json"), "r"))
+        #world_js = json.load(open(os.path.join(SCENE_DIR, f"{scene_id}/input.json"), "r"))
+        world_js = json.load(open(os.path.join(SCENE_DIR, f"obj/input.json"), "r"))
         assets = world_js.keys()
         poses_world = [None for _ in range(NUM_OBJECTS)]
         extents = [None for _ in range(NUM_OBJECTS)]
@@ -289,10 +290,10 @@ def render_scene(
         object_names = []
 
         for obj_name in assets:
-            # pose = np.array(world_js[obj_name])
-            # pose[0][-1] = 0.425
-            # pose[1][-1] = 0
-            # pose[2][-1] = 0
+            pose = np.array(world_js[obj_name])
+            pose[0][-1] = 0.425
+            pose[1][-1] = 0
+            pose[2][-1] = 0
             # print(pose)
             # print(world_js[obj_name])
             # print(sapien.Pose.from_transformation_matrix(world_js[obj_name]))
@@ -300,8 +301,8 @@ def render_scene(
                 scene,
                 obj_name,
                 renderer=renderer,
-                # pose=sapien.Pose.from_transformation_matrix(pose),
-                pose=sapien.Pose.from_transformation_matrix(world_js[obj_name]),
+                pose=sapien.Pose.from_transformation_matrix(pose),
+                #pose=sapien.Pose.from_transformation_matrix(world_js[obj_name]),
                 is_kinematic=True,
                 material_name="kuafu_material_new2",
             )
@@ -326,6 +327,7 @@ def render_scene(
             "object_ids": obj_ids,
             "object_names": object_names,
         }
+  
 
     cam_pose_out = np.zeros([num_views, 4, 4])
     for view_id in range(num_views):
@@ -333,6 +335,7 @@ def render_scene(
         os.makedirs(folder_path, exist_ok=True)
         if fixed_angle:
             cam_mount.set_pose(ex2pose(cam_extrinsic_list[view_id]))
+            #cam_mount.set_pose(cv2ex2pose(cam_extrinsic_list[view_id]))
             #print(cam_mount.get_pose().to_transformation_matrix())
             cam_pose_out[view_id,:,:] = cam_mount.get_pose().to_transformation_matrix()
 
@@ -349,7 +352,7 @@ def render_scene(
 
             apos = cam_mount.get_pose().to_transformation_matrix()[:3, :3] @ mount_T
             apos = t3d.quaternions.mat2quat(apos)
-            alight.set_pose(Pose(cam_mount.get_pose().p, apos))
+            alight.set_pose(Pose(cam_mount.get_pose().p, cam_mount.get_pose().q))
         if view_id == 0 and fixed_angle:
             # reproduce IJRR
             cam_rgb = base_cam_rgb
@@ -421,6 +424,7 @@ def render_scene(
 
         if fixed_angle:
             cam_extrinsic_T = pose2cv2ex(cam_extrinsic_list[view_id])
+            #cam_extrinsic_T = cam_extrinsic_list[view_id]
         else:
             cam_extrinsic_T = pose2cv2ex(cam_extrinsic)
         if view_id == 0 and fixed_angle:
@@ -438,7 +442,7 @@ def render_scene(
         #assume ir light is always the last one
         #print(scene.get_all_lights()[-1].pose.to_transformation_matrix())
         scene_info = {
-            "ir_transformation": scene.get_all_lights()[-1].pose.to_transformation_matrix(),
+            "ir_transformation": np.linalg.inv(pose2cv2ex(alight.pose.to_transformation_matrix())),
             "extrinsic": cam_extrinsic_T,
             "extrinsic_l": cam_irL_extrinsic,
             "extrinsic_r": cam_irR_extrinsic,
@@ -449,7 +453,8 @@ def render_scene(
         if primitives or primitives_v2 or primitive_sphere:
             scene_info["primitives"] = primitive_info
         else:
-            scene_info.update(obj_info)
+            print("no obj")
+            #scene_info.update(obj_info)
 
         with open(os.path.join(folder_path, "meta.pkl"), "wb") as f:
             pickle.dump(scene_info, f)
@@ -574,21 +579,22 @@ def render_gt_depth_label(
         if not os.path.exists(os.path.join(SCENE_DIR, f"{scene_id}/input.json")):
             logger.warning(f"{SCENE_DIR}/{scene_id}/input.json not exists.")
             return
+   
+        world_js = json.load(open(os.path.join(SCENE_DIR, f"obj/input.json"), "r"))
         #world_js = json.load(open(os.path.join(SCENE_DIR, f"{scene_id}/input.json"), "r"))
-        world_js = json.load(open(os.path.join(SCENE_DIR, f"{scene_id}/input.json"), "r"))
         assets = world_js.keys()
         actors = []
         for obj_name in assets:
-            # pose = np.array(world_js[obj_name])
-            # pose[0][-1] = 0.425
-            # pose[1][-1] = 0
-            # pose[2][-1] = 0
+            pose = np.array(world_js[obj_name])
+            pose[0][-1] = 0.425
+            pose[1][-1] = 0
+            pose[2][-1] = 0
             # print(pose)
             ac = load_obj_vk(
                 scene,
                 obj_name,
-                pose=sapien.Pose.from_transformation_matrix(world_js[obj_name]),
-                # pose=sapien.Pose.from_transformation_matrix(pose),
+                #pose=sapien.Pose.from_transformation_matrix(world_js[obj_name]),
+                pose=sapien.Pose.from_transformation_matrix(pose),
                 is_kinematic=True,
             )
             actors.append(ac)
@@ -596,6 +602,7 @@ def render_gt_depth_label(
         # Mapping id to name
         seg_id_to_sapien_name = {actor.get_id(): actor.get_name() for actor in scene.get_all_actors()}
         seg_id_to_obj_name = {actor.get_id(): asset for actor, asset in zip(actors, assets)}
+     
 
     for view_id in range(num_views):
         folder_path = os.path.join(target_root, f"{scene_id}-{view_id}")
@@ -607,8 +614,10 @@ def render_gt_depth_label(
         # print(cam_extrinsic)
         if fixed_angle:
             cam_mount.set_pose(cv2ex2pose(cam_extrinsic))
+            #cam_mount.set_pose(sapien.Pose.from_transformation_matrix(cam_extrinsic))
         else:
-            cam_mount.set_pose(sapien.Pose.from_transformation_matrix(cam_extrinsic))
+            #cam_mount.set_pose(sapien.Pose.from_transformation_matrix(cam_extrinsic))
+            cam_mount.set_pose(cv2ex2pose(cam_extrinsic))
 
         # Obtain main-view RGB depth
         scene.update_render()
@@ -647,21 +656,36 @@ def render_gt_depth_label(
         #t2cv = np.array(
         #    [[0.0, -1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [-1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0]], dtype=np.float32
         #)
-        cam_extrinsic_l = cv2ex2pose(cam_extrinsic_l).to_transformation_matrix()
+        #cam_extrinsic_l = cv2ex2pose(cam_extrinsic_l).to_transformation_matrix()
         #print(cam_extrinsic_l)
 
-        #cam_extrinsic_l = np.linalg.inv(cam_extrinsic_l)
+        cam_extrinsic_l = np.linalg.inv(cam_extrinsic_l)
         normal_map = cam_irl.get_float_texture("Normal")[...,:3]
         hn, wn = normal_map.shape[0], normal_map.shape[1]
+        cv2_transform = np.array([[1.,0.,0.],[0.,-1.,0.],[0.,0.,-1.]])
 
         normal_map_flat = normal_map.reshape(hn*wn,3)
-        normal_map_world =  (cam_extrinsic_l[:3,:3] @ normal_map_flat.T)
+        normal_map_world = (cv2_transform[:3,:3] @ normal_map_flat.T)
 
-        cv2_transform = pose2cv2ex(np.eye(4))
-        normal_map_world = (cv2_transform[:3,:3] @ normal_map_world).T
+        
+
+        #cv2_transform = pose2cv2ex(np.eye(4))
+        normal_map_world = (cam_extrinsic_l[:3,:3] @ normal_map_world).T
 
         normal_map_world = normal_map_world.reshape([hn,wn,3])
-        normal_map_world = normal_map_world/np.linalg.norm(normal_map_world, axis=-1, keepdims=True)
+        #print(np.linalg.norm(normal_map_world, axis=-1, keepdims=True).shape)
+        #n = np.linalg.norm(normal_map_world, axis=-1, keepdims=True)
+        #for x in range(1080):
+        #    for y in range(1920):
+        #        if n[x,y,0] == 0:
+        #            print(cam_irl.get_float_texture("Normal")[x,y,:])
+        #            print(x,y)
+        #assert 1==0
+        norm = np.linalg.norm(normal_map_world, axis=-1, keepdims=True)
+        norm[norm == 0] = 1
+        normal_map_world = normal_map_world/norm
+    
+        #print(normal_map_world[0,0,:])
         #print(np.linalg.norm(normal_map_world[900:902,500:502,:],axis=-1))
         #assert 1==0
         normal_map_colored = ((normal_map_world + 1) * 127.5).astype(np.uint8)
@@ -680,7 +704,7 @@ def render_gt_depth_label(
         cv2.imwrite(os.path.join(folder_path, f"depthR.png"), depth)
         vis_depth = visualize_depth(depth)
         cv2.imwrite(os.path.join(folder_path, f"depthR_colored.png"), vis_depth)
-
+   
         if not (primitives or primitives_v2 or primitive_sphere):
             # render label image
             obj_segmentation = cam_rgb.get_uint32_texture("Segmentation")[..., 1]
@@ -736,6 +760,7 @@ def render_gt_depth_label(
             sem_labels_with_color = COLOR_PALETTE[sem_labels]
             sem_image_with_color = Image.fromarray(sem_labels_with_color.astype("uint8"))
             sem_image_with_color.save(os.path.join(folder_path, "labelR2.png"))
+
 
         logger.info(f"finish {folder_path} gt depth and seg")
     scene = None

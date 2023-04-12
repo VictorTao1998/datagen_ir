@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     renderer = sapien.KuafuRenderer(render_config)
     sim.set_renderer(renderer)
-
+    
     for sc in sub_scene_list:
         done = True
         for v in range(num_view):

@@ -234,7 +234,7 @@ def render_scene(
             tex_path=os.path.join(materials_root, "d415-pattern-sq.png"),
         )
 
-    cam_extrinsic_list = np.load(os.path.join(materials_root, "cam_db_nerf_near_obj.npy"))
+    cam_extrinsic_list = np.load(os.path.join(materials_root, "cam_db_nerf.npy"))
     if fixed_angle:
         assert num_views <= cam_extrinsic_list.shape[0]
     else:
@@ -280,8 +280,8 @@ def render_scene(
         if not os.path.exists(os.path.join(SCENE_DIR, f"{scene_id}/input.json")):
             logger.warning(f"{SCENE_DIR}/{scene_id}/input.json not exists.")
             return
-        #world_js = json.load(open(os.path.join(SCENE_DIR, f"{scene_id}/input.json"), "r"))
-        world_js = json.load(open(os.path.join(SCENE_DIR, f"obj/input.json"), "r"))
+        world_js = json.load(open(os.path.join(SCENE_DIR, f"{scene_id}/input.json"), "r"))
+        #world_js = json.load(open(os.path.join(SCENE_DIR, f"obj/input.json"), "r"))
         assets = world_js.keys()
         poses_world = [None for _ in range(NUM_OBJECTS)]
         extents = [None for _ in range(NUM_OBJECTS)]
@@ -291,9 +291,9 @@ def render_scene(
 
         for obj_name in assets:
             pose = np.array(world_js[obj_name])
-            pose[0][-1] = 0.425
-            pose[1][-1] = 0
-            pose[2][-1] = 0
+            #pose[0][-1] = 0.425
+            #pose[1][-1] = 0
+            #pose[2][-1] = 0
             # print(pose)
             # print(world_js[obj_name])
             # print(sapien.Pose.from_transformation_matrix(world_js[obj_name]))
@@ -580,15 +580,15 @@ def render_gt_depth_label(
             logger.warning(f"{SCENE_DIR}/{scene_id}/input.json not exists.")
             return
    
-        world_js = json.load(open(os.path.join(SCENE_DIR, f"obj/input.json"), "r"))
-        #world_js = json.load(open(os.path.join(SCENE_DIR, f"{scene_id}/input.json"), "r"))
+        #world_js = json.load(open(os.path.join(SCENE_DIR, f"obj/input.json"), "r"))
+        world_js = json.load(open(os.path.join(SCENE_DIR, f"{scene_id}/input.json"), "r"))
         assets = world_js.keys()
         actors = []
         for obj_name in assets:
             pose = np.array(world_js[obj_name])
-            pose[0][-1] = 0.425
-            pose[1][-1] = 0
-            pose[2][-1] = 0
+            #pose[0][-1] = 0.425
+            #pose[1][-1] = 0
+            #pose[2][-1] = 0
             # print(pose)
             ac = load_obj_vk(
                 scene,

@@ -231,10 +231,10 @@ def render_scene(
             # pose=Pose(cam_mount.get_pose().p, apos),
             color=[0, 0, 0],
             fov=fov,
-            tex_path=os.path.join(materials_root, "d415-pattern-sq3.png"),
+            tex_path=os.path.join(materials_root, "d415-pattern-sq.png"),
         )
 
-    cam_extrinsic_list = np.load(os.path.join(materials_root, "cam_db_nerf.npy"))
+    cam_extrinsic_list = np.load(os.path.join(materials_root, "cam_db_nerf_near.npy"))
     if fixed_angle:
         assert num_views <= cam_extrinsic_list.shape[0]
     else:

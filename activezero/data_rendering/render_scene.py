@@ -234,7 +234,7 @@ def render_scene(
             tex_path=os.path.join(materials_root, "d415-pattern-sq.png"),
         )
 
-    cam_extrinsic_list = np.load(os.path.join(materials_root, "cam_db_nerf_near.npy"))
+    cam_extrinsic_list = np.load(os.path.join(materials_root, "cam_db_nerf.npy"))
     if fixed_angle:
         assert num_views <= cam_extrinsic_list.shape[0]
     else:
